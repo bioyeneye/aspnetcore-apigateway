@@ -1,3 +1,5 @@
 .idea/*
 AuxApiGateway/bin/*
 AuxApiGateway/obj/*
+
+.vs/*

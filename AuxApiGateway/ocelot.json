@@ -1,4 +1,7 @@
 {
+  "GlobalConfiguration": {
+    "BaseUrl": "http://localhost:7000"
+  },
   "Routes": [
     {
       //"ServiceName": "patients",
@@ -17,7 +20,29 @@
         "PUT",
         "DELETE"
       ],
-      "UpstreamHost": "*",
+      "AuthenticationOptions": {
+        //"AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": []
+      },
+      "SwaggerKey": "patients"
+    },
+    {
+      //"ServiceName": "patients",
+      "DownstreamPathTemplate": "/v1/api/patients",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7005
+        }
+      ],
+      "UpstreamPathTemplate": "/emrapi/v1/patients",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE"
+      ],
       "AuthenticationOptions": {
         //"AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
@@ -32,15 +57,9 @@
         {
           "Name": "Patients API",
           "Version": "v1",
-          "Service": {
-            "Name": "patients",
-            "Path": "/swagger/v1/swagger.json"
-          }
+          "Url": "https://localhost:7005/swagger/v1/swagger.json"
         }
       ]
     }
-  ],
-  "GlobalConfiguration": {
-
-  }
+  ]
 }

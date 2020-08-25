@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using AuxApiGateway.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -13,7 +14,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Ocelot.DependencyInjection;
+using Ocelot.Middleware;
+using MMLib.Ocelot.Provider.AppConfiguration;
+using System.IO;
+using Microsoft.AspNetCore.Http;
 
 namespace AuxApiGateway
 {
@@ -29,51 +35,16 @@ namespace AuxApiGateway
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddOcelot()
+                .AddAppConfiguration();
+            services.AddSwaggerForOcelot(Configuration);
+
             services.AddControllers();
-            var microserviceSetting = Configuration.GetSection(nameof(ApiGatewaySetting)).Get<ApiGatewaySetting>();
-            services.AddAuthentication(
-                    sharedOptions =>
-                    {
-                        sharedOptions.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                        sharedOptions.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                        sharedOptions.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-                    })
-                .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, x =>
-                {
-                    x.Authority = microserviceSetting.Authority;
-                    x.RequireHttpsMetadata = false;
-                    x.SaveToken = true;
-                    x.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters()
-                    {
-                        ValidateIssuer = microserviceSetting.ValidateIssuer,
-                        ValidateAudience = microserviceSetting.ValidateAudience,
-                        ValidateLifetime = false,
-                        ValidateIssuerSigningKey = microserviceSetting.ValidateIssuerSigningKey,
-                        ValidIssuer = microserviceSetting.Authority,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(microserviceSetting.Secret)),
-                        ClockSkew = TimeSpan.FromMinutes(5),
-                        ValidAudiences = microserviceSetting.Audience.Split(',')
-                        // ValidAudiences = new[] {"orders", "basket", "locations", "marketing", "mobileshoppingagg", "webshoppingagg"}
-                    };
-                    x.Events = new JwtBearerEvents
-                    {
-                        OnAuthenticationFailed = context =>
-                        {
-                            Console.WriteLine("OnAuthenticationFailed: " + context.Exception.Message);
-                            return Task.CompletedTask;
-                        },
-                        OnTokenValidated = context =>
-                        {
-                            Console.WriteLine("OnTokenValidated: " + context.SecurityToken);
-                            return Task.CompletedTask;
-                        }
-                    };
-                });
-            services.AddOcelot();
+            services.AddGatewayAuthentication(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public async void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
@@ -83,10 +54,16 @@ namespace AuxApiGateway
             app.UseHttpsRedirection();
 
             app.UseRouting();
-
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
+
+            app.UseSwaggerForOcelotUI(opt =>
+            {
+                opt.PathToSwaggerGenerator = "/swagger/docs";
+            });
+
+            await app.UseOcelot();
         }
     }
 }
